@@ -1,1 +1,1 @@
-This is the very first draft of a prd for Threadify
+This is the very first draft of a prd for Threadify. Threadify is going to be a
