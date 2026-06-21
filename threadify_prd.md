@@ -41,10 +41,10 @@ The README walks through all of this. Onboarding friction is accepted for the CL
 ## 4. Settled product decisions
 
 | Question | Decision (MVP) |
-|---|---|
+| --- | --- |
 | **Input scope** | Reddit **and** any URL. Reddit fetched via the `.json` trick; arbitrary URLs fetched as HTML and stripped to text. Pasted-text input is a fast-follow, not MVP-blocking. |
 | **Expand behaviour** (`--expand`) | Opt-in. **Studio albums only** (exclude live / compilation / single). **Cap per artist** (default 3, configurable). |
-| **Playlist visibility** | **Private** by default. |
+| **Playlist visibility** | **Private** by default. An option later to choose between **Private** or **Public** |
 | **Re-run behaviour** | **Dedupe** — when targeting an existing playlist, skip tracks already present (requires `playlist-read-private`). |
 | **CLI shape** | **Two-stage** with an editable JSON file between the stages — this _is_ the review gate and mirrors the GUI's split-screen review. |
 
@@ -95,7 +95,7 @@ Notes:
 The CLI and the future GUI are thin shells over these pure functions. No interface-specific code leaks into core.
 
 | Function | Responsibility |
-|---|---|
+| --- | --- |
 | `fetchPage(url)` → `text` | Reddit `.json` or HTML→text. |
 | `extractAlbums(text)` → `[{artist, album, snippet, confidence}]` | LLM extraction. Narrow job: text in, JSON out. |
 | `resolveToSpotify({artist, album})` → `SpotifyMatch \| null` | Search endpoint; returns best match + alternates for ambiguity. |
@@ -151,3 +151,4 @@ The CLI and the future GUI are thin shells over these pure functions. No interfa
 - Track-vs-album default when a thread mixes both.
 - How aggressively to merge near-duplicate artist spellings before resolution.
 - Whether to persist a small local cache of resolved artist/album → Spotify IDs.
+- How would be the best way to resolve music suggestions split over several responses? Often someone will suggest an Artist as a top level comment. Then people will respond with album or track suggestions by that artist that. These suggestions can come up several threads deep. We need to be able to find these suggestions, match them with the artist, and include them in the suggested JSON.
