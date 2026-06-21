@@ -8,11 +8,12 @@ Threadify turns a URL full of music recommendations (a Reddit thread, a blog pos
 
 It is a **personal, open-source, single-user, bring-your-own-keys** tool. Each user supplies their own Spotify app credentials and their own LLM API key and runs it on their own machine. There is no shared backend.
 
-**MVP surface: a CLI.** A Tauri/macOS GUI is the confirmed next phase, built on the *same* core library, only after the CLI works.
+**MVP surface: a CLI.** A Tauri/macOS GUI is the confirmed next phase, built on the _same_ core library, only after the CLI works.
 
 ## 2. Goals & non-goals
 
 ### Goals (MVP)
+
 - Extract music references from messy forum/HTML prose reliably enough to be useful.
 - Always let the user **review and correct** extractions before anything is written to Spotify.
 - Create a private Spotify playlist with a user-chosen name/description and add the resolved tracks.
@@ -20,6 +21,7 @@ It is a **personal, open-source, single-user, bring-your-own-keys** tool. Each u
 - Be runnable by a developer in <15 minutes from a clear README + onboarding.
 
 ### Non-goals (MVP)
+
 - No GUI (next phase).
 - No "similar artists" / recommendation discovery — Spotify removed those endpoints.
 - No multi-user, no hosted service, no shared credentials.
@@ -44,7 +46,7 @@ The README walks through all of this. Onboarding friction is accepted for the CL
 | **Expand behaviour** (`--expand`) | Opt-in. **Studio albums only** (exclude live / compilation / single). **Cap per artist** (default 3, configurable). |
 | **Playlist visibility** | **Private** by default. |
 | **Re-run behaviour** | **Dedupe** — when targeting an existing playlist, skip tracks already present (requires `playlist-read-private`). |
-| **CLI shape** | **Two-stage** with an editable JSON file between the stages — this *is* the review gate and mirrors the GUI's split-screen review. |
+| **CLI shape** | **Two-stage** with an editable JSON file between the stages — this _is_ the review gate and mirrors the GUI's split-screen review. |
 
 ## 5. CLI design (MVP)
 
@@ -67,8 +69,9 @@ threadify create <parsed.json> --name "<playlist name>" [--desc "..."]
 ```
 
 Notes:
+
 - The user is expected to open `parsed.json` and fix any wrong artist/album/track fields before running `create`. This is intentional and central.
-- `create` always prints the resolved matches (and any *unmatched* / *ambiguous* entries) before writing, even without `--dry-run`.
+- `create` always prints the resolved matches (and any _unmatched_ / _ambiguous_ entries) before writing, even without `--dry-run`.
 
 ### Editable JSON schema (between stages)
 
@@ -78,12 +81,12 @@ Notes:
   "items": [
     {
       "artist": "Burial",
-      "album": "Untrue",          // or "track" for track-mode
+      "album": "Untrue", // or "track" for track-mode
       "snippet": "...the obvious pick is Burial's Untrue...", // provenance
-      "confidence": "high",       // LLM-reported, advisory only
-      "include": true             // user can flip to false to skip
-    }
-  ]
+      "confidence": "high", // LLM-reported, advisory only
+      "include": true, // user can flip to false to skip
+    },
+  ],
 }
 ```
 
@@ -104,9 +107,9 @@ The CLI and the future GUI are thin shells over these pure functions. No interfa
 
 1. **Fetch** page → text.
 2. **Extract** `{artist, album/track}` pairs via LLM (with provenance snippet).
-3. *(review gate — user edits JSON)*
+3. _(review gate — user edits JSON)_
 4. **Resolve** each to Spotify IDs (Search). Surface unmatched/ambiguous.
-5. *(optional)* **Expand** to studio albums per artist (capped).
+5. _(optional)_ **Expand** to studio albums per artist (capped).
 6. Expand any albums to their **tracklists**.
 7. **Create/append** playlist, **dedupe** against existing tracks.
 
@@ -121,7 +124,7 @@ The CLI and the future GUI are thin shells over these pure functions. No interfa
 ## 9. Security & correctness guardrails
 
 - **Prompt injection:** scraped forum text is untrusted. The LLM's only job is extract names → JSON. Scraped text MUST NOT drive actions, tool calls, or command behaviour. No tool-use exposed to the extraction prompt.
-- **Fuzzy-match safety:** resolution is where wrong matches happen (covers, live vs studio, wrong artist). Playlist writes are *always* gated behind the JSON review + the `create` resolution summary. Unmatched/ambiguous entries are reported, not silently dropped or guessed.
+- **Fuzzy-match safety:** resolution is where wrong matches happen (covers, live vs studio, wrong artist). Playlist writes are _always_ gated behind the JSON review + the `create` resolution summary. Unmatched/ambiguous entries are reported, not silently dropped or guessed.
 - **No secrets in logs or the JSON artifact.**
 
 ## 10. MVP acceptance criteria
