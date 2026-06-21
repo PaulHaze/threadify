@@ -96,7 +96,7 @@ The CLI and the future GUI are thin shells over these pure functions. No interfa
 
 | Function | Responsibility |
 | --- | --- |
-| `fetchPage(url)` → `text` | Reddit `.json` or HTML→text. |
+| `fetchPage(url)` → `text` | Reddit `.json` or HTML→text. For Reddit, output must preserve comment nesting as indented text so the LLM can resolve partial suggestions (e.g. a track named in a reply) using parent-comment context (e.g. the artist named above it). |
 | `extractAlbums(text)` → `[{artist, album, snippet, confidence}]` | LLM extraction. Narrow job: text in, JSON out. |
 | `resolveToSpotify({artist, album})` → `SpotifyMatch \| null` | Search endpoint; returns best match + alternates for ambiguity. |
 | `expandArtist(artistId, {studioOnly, cap})` → `albumId[]` | Get Artist's Albums, filtered + capped. |

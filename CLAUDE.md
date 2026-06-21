@@ -23,7 +23,7 @@ shell.
 
 Core functions:
 
-- `fetchPage(url)` → text (Reddit `.json` or HTML→text)
+- `fetchPage(url)` → text (Reddit `.json` or HTML→text). For Reddit, must preserve comment nesting as indented text — partial suggestions (e.g. a track named in a reply) are resolved by the LLM using parent-comment context (e.g. the artist named above).
 - `extractAlbums(text)` → `[{artist, album, snippet, confidence}]` (LLM)
 - `resolveToSpotify({artist, album})` → Spotify match | null (Search)
 - `expandArtist(artistId, {studioOnly, cap})` → albumIds
