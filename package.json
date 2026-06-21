@@ -1,0 +1,21 @@
+{
+  "name": "threadify",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "threadify": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
