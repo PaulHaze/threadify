@@ -3,7 +3,7 @@ export interface ExtractedItem {
   album?: string;
   track?: string;
   snippet: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   include: boolean;
 }
 
