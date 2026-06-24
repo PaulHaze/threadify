@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "threadify": "./dist/cli/index.js"
+    "threadify": "./dist/cli/index.js",
+    "tfy": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",

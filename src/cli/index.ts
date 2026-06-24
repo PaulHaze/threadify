@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import 'dotenv/config'
 import { auth } from './auth.js'
 import { read } from './read.js'
