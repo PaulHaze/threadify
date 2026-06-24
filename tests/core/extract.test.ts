@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   buildExtractionPrompt,
   parseExtractionResponse,
+  parseWithRetry,
 } from "../../src/core/extract.js";
 
 describe("buildExtractionPrompt", () => {
@@ -67,5 +68,36 @@ describe("parseExtractionResponse", () => {
     ]);
     const items = parseExtractionResponse(raw);
     expect(items[0].include).toBe(true);
+  });
+});
+
+describe("parseWithRetry", () => {
+  const valid = JSON.stringify([
+    { artist: "Eno", snippet: "check out Eno", confidence: "high" },
+  ]);
+
+  it("returns parsed items when the first call succeeds", async () => {
+    const callModel = vi.fn().mockResolvedValue(valid);
+    const items = await parseWithRetry(callModel);
+    expect(items[0].artist).toBe("Eno");
+    expect(callModel).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries once when the first response is unparseable", async () => {
+    const callModel = vi
+      .fn()
+      .mockResolvedValueOnce("sorry I cannot help")
+      .mockResolvedValueOnce(valid);
+    const items = await parseWithRetry(callModel);
+    expect(items[0].artist).toBe("Eno");
+    expect(callModel).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws if both attempts fail to parse", async () => {
+    const callModel = vi.fn().mockResolvedValue("still not JSON");
+    await expect(parseWithRetry(callModel)).rejects.toThrow(
+      "Failed to parse LLM extraction response as JSON",
+    );
+    expect(callModel).toHaveBeenCalledTimes(2);
   });
 });

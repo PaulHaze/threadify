@@ -75,4 +75,18 @@ describe("stripHtml", () => {
   it("collapses whitespace", () => {
     expect(stripHtml("<p>foo</p>\n<p>bar</p>")).toBe("foo bar");
   });
+
+  it("removes script element contents", () => {
+    expect(
+      stripHtml("<p>keep</p><script>var x = 1; doStuff();</script>"),
+    ).toBe("keep");
+  });
+
+  it("removes style element contents", () => {
+    expect(stripHtml("<style>.a{color:red}</style><p>keep</p>")).toBe("keep");
+  });
+
+  it("removes HTML comments", () => {
+    expect(stripHtml("<!-- tracking pixel --><p>keep</p>")).toBe("keep");
+  });
 });

@@ -52,16 +52,67 @@ export function parseExtractionResponse(raw: string): ExtractedItem[] {
     .filter((item) => item.artist.length > 0);
 }
 
+function dedupeItems(items: ExtractedItem[]): ExtractedItem[] {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    const key = `${item.artist.toLowerCase()}|${(item.album ?? item.track ?? '').toLowerCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function chunkLines(text: string, linesPerChunk: number): string[] {
+  const lines = text.split('\n')
+  const chunks: string[] = []
+  for (let i = 0; i < lines.length; i += linesPerChunk) {
+    chunks.push(lines.slice(i, i + linesPerChunk).join('\n'))
+  }
+  return chunks
+}
+
+const LINES_PER_CHUNK = 150
+const MAX_OUTPUT_TOKENS = 8096
+
+export async function parseWithRetry(
+  callModel: () => Promise<string>,
+): Promise<ExtractedItem[]> {
+  try {
+    return parseExtractionResponse(await callModel())
+  } catch {
+    // One retry — a fresh sample usually recovers a malformed response.
+    return parseExtractionResponse(await callModel())
+  }
+}
+
+async function extractChunk(client: Anthropic, text: string, model: string): Promise<ExtractedItem[]> {
+  const callModel = async () => {
+    const message = await client.messages.create({
+      model,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      messages: [{ role: "user", content: buildExtractionPrompt(text) }],
+    })
+    return message.content.find((b) => b.type === "text")?.text ?? ""
+  }
+  return parseWithRetry(callModel)
+}
+
 export async function extractAlbums(
   text: string,
   config: LLMConfig,
 ): Promise<ExtractedItem[]> {
-  const client = new Anthropic({ apiKey: config.apiKey });
-  const message = await client.messages.create({
-    model: config.model,
-    max_tokens: 4096,
-    messages: [{ role: "user", content: buildExtractionPrompt(text) }],
-  });
-  const raw = message.content.find((b) => b.type === "text")?.text ?? "";
-  return parseExtractionResponse(raw);
+  const client = new Anthropic({ apiKey: config.apiKey })
+  const lines = text.split('\n').length
+
+  if (lines <= LINES_PER_CHUNK) {
+    return extractChunk(client, text, config.model)
+  }
+
+  const chunks = chunkLines(text, LINES_PER_CHUNK)
+  const results: ExtractedItem[] = []
+  for (const chunk of chunks) {
+    const items = await extractChunk(client, chunk, config.model)
+    results.push(...items)
+  }
+  return dedupeItems(results)
 }
