@@ -14,7 +14,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0"
+    "@anthropic-ai/sdk": "^0.52.0",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
