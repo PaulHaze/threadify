@@ -1,16 +1,9 @@
-import { spotifyGet } from "./spotify.js";
+import { spotifyGetAll } from './spotify.js'
 
-interface AlbumTracksResponse {
-  items: { id: string }[];
-}
-
-export async function albumTracks(
-  albumId: string,
-  token: string,
-): Promise<string[]> {
-  const data = (await spotifyGet(
+export async function albumTracks(albumId: string, token: string): Promise<string[]> {
+  const items = await spotifyGetAll<{ id: string }>(
     `/albums/${albumId}/tracks?limit=50`,
     token,
-  )) as AlbumTracksResponse;
-  return data.items.map((t) => t.id);
+  )
+  return items.map(t => t.id)
 }

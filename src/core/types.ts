@@ -34,6 +34,12 @@ export interface LLMConfig {
   model: string;
 }
 
+export interface ResolutionSummary {
+  matched: ResolvedItem[];
+  unmatched: ResolvedItem[];
+  artistOnly: ResolvedItem[];
+}
+
 export interface BuildPlaylistOpts {
   name: string;
   description?: string;

@@ -2,11 +2,36 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { getAccessToken } from './auth.js'
-import { resolveToSpotify } from '../core/resolve.js'
-import { expandArtist } from '../core/expand.js'
-import { albumTracks } from '../core/tracks.js'
+import { resolveParsed, planPlaylist } from '../core/workflow.js'
 import { buildPlaylist } from '../core/playlist.js'
-import type { ParsedOutput, ResolvedItem } from '../core/types.js'
+import type { ParsedOutput, ResolutionSummary } from '../core/types.js'
+
+function printSummary(summary: ResolutionSummary): void {
+  console.log(`Matched:    ${summary.matched.length}`)
+  console.log(`Unmatched:  ${summary.unmatched.length}`)
+  console.log(`Artist-only: ${summary.artistOnly.length}`)
+
+  if (summary.unmatched.length > 0) {
+    console.log('\nUnmatched items:')
+    summary.unmatched.forEach(r =>
+      console.log(`  - ${r.input.artist}${r.input.album ? ` / ${r.input.album}` : ''}`)
+    )
+  }
+
+  const ambiguous = summary.matched.filter(r => r.alternates.length > 0)
+  if (ambiguous.length > 0) {
+    console.log('\nAmbiguous (first match used, alternates available):')
+    ambiguous.forEach(r => {
+      console.log(`  - ${r.input.artist} / ${r.input.album ?? r.input.track}`)
+      r.alternates.slice(0, 2).forEach(a => console.log(`      alt: ${a.artistName} / ${a.albumName}`))
+    })
+  }
+
+  if (summary.artistOnly.length > 0) {
+    console.log('\nArtist-only (use --expand to include their studio albums):')
+    summary.artistOnly.forEach(r => console.log(`  - ${r.input.artist}`))
+  }
+}
 
 export async function create(args: string[]): Promise<void> {
   const { positionals, values } = parseArgs({
@@ -41,53 +66,15 @@ export async function create(args: string[]): Promise<void> {
   const dryRun = values['dry-run'] as boolean
 
   console.log(`\nResolving ${activeItems.length} items...\n`)
-  const resolved: ResolvedItem[] = []
+  const summary = await resolveParsed(activeItems, token)
+  printSummary(summary)
 
-  for (const item of activeItems) {
-    const { match, alternates } = await resolveToSpotify(item, token)
-    resolved.push({ input: item, match, alternates })
-  }
-
-  const matched = resolved.filter(r => r.match)
-  const unmatched = resolved.filter(r => !r.match)
-  const ambiguous = resolved.filter(r => r.alternates.length > 0)
-
-  console.log(`Matched:   ${matched.length}`)
-  console.log(`Unmatched: ${unmatched.length}`)
-  if (unmatched.length > 0) {
-    console.log('\nUnmatched items:')
-    unmatched.forEach(r => console.log(`  - ${r.input.artist}${r.input.album ? ` / ${r.input.album}` : ''}`))
-  }
-  if (ambiguous.length > 0) {
-    console.log('\nAmbiguous (first match used, alternates available):')
-    ambiguous.forEach(r => {
-      console.log(`  - ${r.input.artist} / ${r.input.album ?? r.input.track}`)
-      r.alternates.slice(0, 2).forEach(a => console.log(`      alt: ${a.artistName} / ${a.albumName}`))
-    })
-  }
+  const trackIds = await planPlaylist(summary, { expand, cap }, token)
 
   if (dryRun) {
-    console.log('\n--dry-run: no playlist written.')
+    console.log(`\nTracks that would be added: ${trackIds.length}`)
+    console.log('--dry-run: no playlist written.')
     return
-  }
-
-  const trackIds: string[] = []
-
-  for (const r of matched) {
-    if (!r.match) continue
-
-    if (expand) {
-      const albumIds = await expandArtist(r.match.artistId, { studioOnly: true, cap }, token)
-      for (const albumId of albumIds) {
-        const ids = await albumTracks(albumId, token)
-        trackIds.push(...ids)
-      }
-    } else if (r.match.trackIds.length > 0) {
-      trackIds.push(...r.match.trackIds)
-    } else {
-      const ids = await albumTracks(r.match.albumId, token)
-      trackIds.push(...ids)
-    }
   }
 
   const url = await buildPlaylist({

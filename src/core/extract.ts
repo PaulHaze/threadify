@@ -27,10 +27,19 @@ export function parseExtractionResponse(raw: string): ExtractedItem[] {
     .replace(/```\s*$/, "")
     .trim();
 
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(cleaned);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) => ({
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error(`Failed to parse LLM extraction response as JSON: ${(e as Error).message}`);
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("LLM extraction response is not a JSON array");
+  }
+
+  return parsed
+    .map((item) => ({
       artist: String(item.artist ?? ""),
       ...(item.album ? { album: String(item.album) } : {}),
       ...(item.track ? { track: String(item.track) } : {}),
@@ -39,10 +48,8 @@ export function parseExtractionResponse(raw: string): ExtractedItem[] {
         ? item.confidence
         : "low",
       include: true,
-    }));
-  } catch {
-    return [];
-  }
+    }))
+    .filter((item) => item.artist.length > 0);
 }
 
 export async function extractAlbums(

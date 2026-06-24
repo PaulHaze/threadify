@@ -1,4 +1,4 @@
-import { spotifyGet, spotifyPost } from './spotify.js'
+import { spotifyGet, spotifyGetAll, spotifyPost } from './spotify.js'
 import type { BuildPlaylistOpts } from './types.js'
 
 export function dedupeTrackIds(incoming: string[], existing: string[]): string[] {
@@ -17,23 +17,18 @@ interface PlaylistResponse {
   external_urls: { spotify: string };
 }
 
-interface MeResponse {
-  id: string;
-}
-
 async function getExistingTrackIds(playlistId: string, token: string): Promise<string[]> {
-  const data = await spotifyGet(
-    `/playlists/${playlistId}/tracks?fields=items(track(id))&limit=50`,
+  const items = await spotifyGetAll<{ track: { id: string } | null }>(
+    `/playlists/${playlistId}/tracks?limit=50`,
     token,
-  ) as { items: { track: { id: string } }[] }
-  return data.items.map(i => i.track.id)
+  )
+  return items.filter(i => i.track !== null).map(i => i.track!.id)
 }
 
 export async function buildPlaylist(opts: BuildPlaylistOpts, token: string): Promise<string> {
   let playlistId = opts.existingPlaylistId
 
   if (!playlistId) {
-    await spotifyGet('/me', token) as MeResponse
     const created = await spotifyPost('/me/playlists', token, {
       name: opts.name,
       description: opts.description ?? '',

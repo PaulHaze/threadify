@@ -11,6 +11,17 @@ export async function spotifyGet(
   return res.json();
 }
 
+export async function spotifyGetAll<T>(startPath: string, token: string): Promise<T[]> {
+  const all: T[] = []
+  let path: string | null = startPath
+  while (path) {
+    const page = await spotifyGet(path, token) as { items: T[]; next: string | null }
+    all.push(...page.items)
+    path = page.next ? page.next.replace(SPOTIFY_BASE, '') : null
+  }
+  return all
+}
+
 export async function spotifyPost(
   path: string,
   token: string,
