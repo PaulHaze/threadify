@@ -1,21 +1,18 @@
-import { writeFile } from 'node:fs/promises'
-import { parseArgs } from 'node:util'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fetchPage } from '../core/fetch.js'
 import { extractAlbums } from '../core/extract.js'
 import type { ParsedOutput } from '../core/types.js'
 
 export async function read(args: string[]): Promise<void> {
-  const { positionals, values } = parseArgs({
-    args,
-    allowPositionals: true,
-    options: { out: { type: 'string', default: 'parsed.json' } },
-  })
-
-  const url = positionals[0]
-  if (!url) throw new Error('Usage: threadify read <url> [--out parsed.json]')
+  const [url, playlistName] = args
+  if (!url || !playlistName) throw new Error('Usage: threadify read <url> <playlist-name>')
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
+
+  const outDir = join(process.cwd(), 'music', playlistName)
+  const outPath = join(outDir, 'parsed.json')
 
   console.log(`Fetching ${url} ...`)
   const text = await fetchPage(url)
@@ -31,7 +28,7 @@ export async function read(args: string[]): Promise<void> {
     items,
   }
 
-  const outPath = values.out as string
+  await mkdir(outDir, { recursive: true })
   await writeFile(outPath, JSON.stringify(output, null, 2), 'utf8')
   console.log(`Wrote ${items.length} items to ${outPath}`)
 }

@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { getAccessToken } from './auth.js'
 import { resolveToSpotify } from '../core/resolve.js'
@@ -18,17 +19,19 @@ export async function create(args: string[]): Promise<void> {
       cap: { type: 'string', default: '3' },
       playlist: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
-      private: { type: 'boolean', default: true },
       public: { type: 'boolean', default: false },
     },
   })
 
-  const jsonPath = positionals[0]
-  if (!jsonPath) throw new Error('Usage: threadify create <parsed.json> --name "..."')
-  const name = values.name as string | undefined
-  if (!name) throw new Error('--name is required')
+  const playlistName = positionals[0]
+  if (!playlistName) throw new Error('Usage: threadify create <playlist-name> [--name "Override Title"]')
 
-  const raw = await readFile(jsonPath, 'utf8')
+  const spotifyName = (values.name as string | undefined) ?? playlistName
+  const jsonPath = join(process.cwd(), 'music', playlistName, 'parsed.json')
+
+  const raw = await readFile(jsonPath, 'utf8').catch(() => {
+    throw new Error(`No parsed.json found at ${jsonPath} — run threadify read first`)
+  })
   const parsed: ParsedOutput = JSON.parse(raw)
   const activeItems = parsed.items.filter(i => i.include)
 
@@ -88,7 +91,7 @@ export async function create(args: string[]): Promise<void> {
   }
 
   const url = await buildPlaylist({
-    name,
+    name: spotifyName,
     description: values.desc as string | undefined,
     isPrivate: !(values.public as boolean),
     trackIds,
