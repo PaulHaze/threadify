@@ -117,7 +117,26 @@ The CLI and the future GUI are thin shells over these pure functions. No interfa
 
 - **Runtime/lang:** Node 20+, TypeScript. Native `fetch`.
 - **Spotify:** Authorization Code + PKCE. Scopes: `playlist-modify-private`, `playlist-modify-public`, `playlist-read-private` (for dedupe/append). App stays in development mode forever. Optionally `@spotify/web-api-ts-sdk`.
-- **LLM:** Default Anthropic / Claude. Recommended model: **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — a thread is a few thousand tokens, so cost is a fraction of a cent per run. Pluggable provider; local model via Ollama is a documented zero-marginal-cost alternative (post-MVP nicety).
+- **LLM:** Default Anthropic / Claude. Recommended model: **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — a thread is a few thousand tokens, so cost is a fraction of a cent per run. The extraction step sits behind a small **provider seam** (see below), so the model can be swapped without touching the rest of the pipeline. Local model via Ollama is a documented zero-marginal-cost alternative (post-MVP nicety).
+
+#### LLM provider seam
+
+`extractAlbums` consumes an `LLMProvider` produced by a `createLLMProvider(config)` factory; the rest of the pipeline always receives the same `ExtractedItem[]` regardless of provider. Two providers are supported:
+
+- **`anthropic`** (default) — Claude via the Anthropic Messages API.
+- **`openai-compatible`** — any API exposing `/chat/completions` (e.g. Kimi, GLM, DeepSeek, OpenRouter, Together, Groq), selected by setting a base URL.
+
+Prompt building, parsing, retry, chunking, and dedupe are provider-agnostic and shared. The prompt-injection guardrails in §9 hold for every provider — no provider is given tool-use, and scraped text only ever yields names → JSON.
+
+Configuration is resolved from the environment (`.env`):
+
+| Variable | Purpose |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Default path. Used as the API key when `LLM_PROVIDER` is unset/`anthropic` and `LLM_API_KEY` is absent. |
+| `LLM_PROVIDER` | `anthropic` (default) or `openai-compatible`. |
+| `LLM_API_KEY` | API key for the chosen provider; overrides `ANTHROPIC_API_KEY` when set. |
+| `LLM_MODEL` | Model id (defaults to `claude-haiku-4-5-20251001`). |
+| `LLM_BASE_URL` | Required for `openai-compatible`; the `/chat/completions` endpoint base. |
 - **Secrets:** `.env` (gitignored) for Client ID/secret + LLM key. Refresh token stored outside the repo (dotfile or macOS Keychain via keytar).
 - **Licence:** MIT.
 
