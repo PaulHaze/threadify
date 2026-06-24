@@ -32,6 +32,8 @@ export interface ResolvedItem {
 export interface LLMConfig {
   apiKey: string;
   model: string;
+  provider?: "anthropic" | "openai-compatible";
+  baseUrl?: string;
 }
 
 export interface ResolutionSummary {

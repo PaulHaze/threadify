@@ -1,6 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ExtractedItem, LLMConfig } from "./types.js";
 
+interface CompletionParams {
+  model: string;
+  prompt: string;
+  maxTokens: number;
+}
+
+export interface LLMProvider {
+  name: "anthropic" | "openai-compatible";
+  complete(params: CompletionParams): Promise<string>;
+}
+
+type FetchLike = typeof fetch;
+
 export function buildExtractionPrompt(text: string): string {
   return `Extract all music recommendations from the following text. Return ONLY a JSON array with no other text.
 
@@ -31,7 +44,9 @@ export function parseExtractionResponse(raw: string): ExtractedItem[] {
   try {
     parsed = JSON.parse(cleaned);
   } catch (e) {
-    throw new Error(`Failed to parse LLM extraction response as JSON: ${(e as Error).message}`);
+    throw new Error(`Failed to parse LLM extraction response as JSON: ${(e as Error).message}`, {
+      cause: e,
+    });
   }
 
   if (!Array.isArray(parsed)) {
@@ -85,14 +100,72 @@ export async function parseWithRetry(
   }
 }
 
-async function extractChunk(client: Anthropic, text: string, model: string): Promise<ExtractedItem[]> {
-  const callModel = async () => {
-    const message = await client.messages.create({
-      model,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      messages: [{ role: "user", content: buildExtractionPrompt(text) }],
+function createAnthropicProvider(apiKey: string): LLMProvider {
+  const client = new Anthropic({ apiKey })
+  return {
+    name: "anthropic",
+    complete: async ({ model, prompt, maxTokens }) => {
+      const message = await client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: prompt }],
+      })
+      return message.content.find((b) => b.type === "text")?.text ?? ""
+    },
+  }
+}
+
+export function createOpenAICompatibleProvider(opts: {
+  apiKey: string;
+  baseUrl: string;
+  fetch?: FetchLike;
+}): LLMProvider {
+  const baseUrl = opts.baseUrl.replace(/\/$/, "")
+  const fetchImpl = opts.fetch ?? fetch
+  return {
+    name: "openai-compatible",
+    complete: async ({ model, prompt, maxTokens }) => {
+      const res = await fetchImpl(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${opts.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      })
+      if (!res.ok) throw new Error(`LLM request failed: ${res.status}`)
+      const data = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      }
+      return data.choices?.[0]?.message?.content ?? ""
+    },
+  }
+}
+
+export function createLLMProvider(config: LLMConfig): LLMProvider {
+  const provider = config.provider ?? "anthropic"
+  if (provider === "anthropic") return createAnthropicProvider(config.apiKey)
+  if (provider === "openai-compatible") {
+    if (!config.baseUrl) throw new Error("LLM_BASE_URL must be set")
+    return createOpenAICompatibleProvider({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
     })
-    return message.content.find((b) => b.type === "text")?.text ?? ""
+  }
+  throw new Error(`Unsupported LLM provider: ${provider}`)
+}
+
+async function extractChunk(provider: LLMProvider, text: string, model: string): Promise<ExtractedItem[]> {
+  const callModel = async () => {
+    return provider.complete({
+      model,
+      prompt: buildExtractionPrompt(text),
+      maxTokens: MAX_OUTPUT_TOKENS,
+    })
   }
   return parseWithRetry(callModel)
 }
@@ -101,17 +174,17 @@ export async function extractAlbums(
   text: string,
   config: LLMConfig,
 ): Promise<ExtractedItem[]> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const provider = createLLMProvider(config)
   const lines = text.split('\n').length
 
   if (lines <= LINES_PER_CHUNK) {
-    return extractChunk(client, text, config.model)
+    return extractChunk(provider, text, config.model)
   }
 
   const chunks = chunkLines(text, LINES_PER_CHUNK)
   const results: ExtractedItem[] = []
   for (const chunk of chunks) {
-    const items = await extractChunk(client, chunk, config.model)
+    const items = await extractChunk(provider, chunk, config.model)
     results.push(...items)
   }
   return dedupeItems(results)
