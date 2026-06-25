@@ -1,6 +1,8 @@
 # Threadify — GUI Roadmap (WIP)
 
-> Living concept doc for the Threadify desktop GUI. Focus: **GUI features and UI/UX**.
+> Living concept doc for the Threadify desktop GUI. Focus: **UI/UX — screens, layouts,
+> interactions.** Feature scope, framework, and architecture decisions live in
+> `FEATURE_ROADMAP.md`; this doc owns *how it looks and feels*.
 > Companion to `threadify_prd.md` (the CLI/core spec) and `CLAUDE.md` (working spec).
 > This is a brainstorming surface — things will change. Nothing here is final.
 
@@ -11,8 +13,12 @@
 - **Decided so far:**
   - Navigation: **linear wizard** — one full-window step at a time, big primary button
     advances, Back to revise.
-  - Framework: **Tauri** (Rust shell + web frontend), macOS-first per the PRD.
   - Review model: **two distinct review gates** (extraction, then Spotify resolution).
+  - Framework/platform (decided in `FEATURE_ROADMAP.md`): **Tauri**, cross-platform.
+  - **Look & feel is platform-native, not a single house style.** A Mac build should
+    look like a Mac app; a Linux build should respect the user's desktop theme; a Windows
+    build should look like Windows. We design the **UX** (what's where, what it does) once;
+    the **chrome** adapts per platform.
 - **Source of truth for features:** `threadify_final_feature_list.txt` (raw brainstorm).
   This doc organizes that into a structured roadmap.
 
@@ -28,6 +34,12 @@
 4. **Core stays pure.** The GUI calls the same `fetchPage` / `extractAlbums` /
    `resolveToSpotify` / `expandArtist` / `buildPlaylist` functions. No business logic
    lives in the UI — it only renders state and collects edits.
+5. **UX is universal, chrome is native.** The *structure* — which actions exist, where
+   they sit in the flow, what each does — is the same everywhere and is what we're nailing
+   first. The *presentation* (controls, typography, window chrome, accent colour) follows
+   each platform's conventions. Where a convention is genuinely platform-specific (button
+   order, menu placement, traffic-light vs. min/max/close), the platform wins over
+   consistency-across-platforms.
 
 ## The wizard flow
 
@@ -50,10 +62,21 @@ key is configured).
 - **"Log in with Spotify" button** — kicks off the PKCE browser flow, captures the
   loopback callback, stores the refresh token (Keychain). On success the button becomes a
   connected state (avatar / display name + "Connected").
-- First-run **settings/onboarding**: somewhere to enter Spotify Client ID/secret and the
-  LLM API key if not already in `.env`. (Open question: how much of the CLI's `.env`
-  onboarding we replicate as a GUI wizard vs. assume pre-configured.)
 - Blocked state: if not connected, the "Next" affordance is disabled with a clear reason.
+
+#### First-run setup (the onboarding UI before the wizard proper)
+
+Shown only when credentials are missing/invalid. This is the "make BYOK painless" surface
+— the feature roadmap leans hard on it, so the UX has to carry it.
+
+- **Guided, step-by-step panel** for creating a Spotify dev app: short instructions with
+  links and screenshots, and **copy-paste fields** for Client ID/secret and the redirect
+  URI (pre-filled with the correct loopback literal so the user can't fat-finger it).
+- **LLM provider + key**: provider picker (Anthropic default / OpenAI-compatible), API key
+  field, optional model/base-URL fields — mirrors the provider seam.
+- **Validate before finishing:** a "Test connection" affordance that confirms the Spotify
+  token works and pings the LLM cheaply, with clear pass/fail per credential. No dead-ends.
+- Open question: how much of this is a one-time wizard vs. always reachable from Settings.
 
 ### Step 2 — Source
 
@@ -148,12 +171,34 @@ behaviour.
 - **Settings surface:** keys, default private/public, expand cap, LLM provider/model
   (the PRD's provider seam) — probably a separate settings panel, not in the wizard.
 
-## Visual / aesthetic direction
+## Platform-native look & feel
 
-Deliberately deferred — the user wants to nail flow and features first, then tune look &
-feel. Placeholder intent: clean, native-macOS-feeling, content-forward (the source text
-and the matches are the heroes). Revisit with the `frontend-design` skill when we get
-there.
+The deliberate stance: **nail the UX once, let each platform supply the look.** We are not
+designing a single branded skin — we're designing *behaviour and placement*, then letting
+the app feel at home on whatever OS it's running on.
+
+What stays the same on every platform (this is what we're nailing first):
+- The five-step flow and the two review gates.
+- Which actions exist and what they do (extract, swap, include/skip, edit & re-search,
+  delete, create playlist).
+- The information hierarchy on each screen (source vs. extracted; submitted vs. matched).
+
+What adapts per platform (defer to OS convention, don't fight it):
+- **Primary/secondary button order.** macOS puts the confirming button on the **right**
+  (e.g. `Cancel | Confirm`); Windows and most Linux/GNOME conventions put it on the
+  **left** (`Confirm | Cancel`). Our wizard's "Back / Next" pair must follow the host
+  platform — so the roadmap describes buttons by **role** (primary-advance,
+  secondary-back, destructive), never by fixed screen position.
+- **Window chrome & controls:** traffic-light buttons + unified titlebar on macOS;
+  standard min/max/close on Windows; whatever the user's Linux desktop theme dictates.
+- **Native widgets where they matter:** file pickers, menus, system fonts, accent colour,
+  light/dark following the OS setting.
+
+> Tauri renders the UI in a webview, so "native" here means **theming to match platform
+> conventions** (system font stack, accent colour, control styling, button order), not
+> literal OS widgets. The cost of getting this right is real and is called out as a build
+> consideration in `FEATURE_ROADMAP.md`. Revisit specifics with the `frontend-design`
+> skill once the UX is locked.
 
 ## Open questions
 
