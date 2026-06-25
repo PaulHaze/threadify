@@ -1,0 +1,37 @@
+This is will be holding doc which I will brainstorm and add features as I come across them.
+
+THINGS THE GUI WILL NEED:
+- A 'log in with spotify button'
+- Somewhere to paste a URL in of a reddit thread or of any other thread (music blogg, dj setlist, anything)
+- A submit button to send off the url
+- A text field to enter what the playlist should be called
+- A 'screening' section where the user will see a list of what has come back. Ideally a split screen window with the original text from the url on the left, and 'extracted' info on the right. 
+
+So if you have a text block on the left like:
+
+- "Also by Bill Evans.Nights of ballads and blues by McCoy Tyner ."
+
+Then the window on the right should be a two column one for artist-album and show:
+"Bill Evans - Also"
+"McCoy Tyner - Nights of Ballads and blues"
+
+Now words like 'also' could trip up the LLM, also it may get the artist and album in the wrong order. So the user should have a chance to go through the list and tidy it up before sending it to spotify. There should also be an easy button to swap Artist/Album order (like to little swap button in the middle of each row, could appear on hover perhaps).
+
+Another example:
+- Submitted text left (appear on right)   
+    "Can’t go wrong with Chet Baker",
+    "Amen.  Especially any of the seven albums he recorded on the Steeple Chase label, circa 1979-1985. My favorites are The Touch of Your Lips and This Is Always.",
+- Album Artist section on right:
+  "Chet Baker - The Touch Of Your Lips"
+  "Chet Baker - This Is Always"
+
+- A confirm button that sends off the list to make a spotify playlist.
+
+Now we need to handle the response. So maybe we could have a tabbed window to handle this. One tab can be for 'Tracks', the other tab 'Playlist'. Or something like that.
+
+- In the playlist tab there will be a list of the Artist/albums that were sent. and next to that a thumbnail of the spotify album or track that will be added to the playlist. Oftentimes there might be multiple results. Lets only show what we thing is the closest one,but give the user the option of seeing more options (will need to expand on the spotify api part of that)
+- There needs to be an option to delete the whole album. 
+- An option to change edit the details that got sent and to resend it (maybe there was a spelling mistake somewhere, or the return gave a single track when the user wanted the album of the same name or vice versa)
+- a button to confirm everything is good and to make the playlist. 
+
+These are the main considerations for now. I will need help tweaking the final UX and design elements for sure but I wanted to get started now. 
